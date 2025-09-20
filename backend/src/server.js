@@ -141,6 +141,9 @@ async function startServer() {
       || String(process.env.SQLITE_STORAGE || '').includes('/tmp');
     if (shouldSeed) {
       try {
+        // Ensure tables exist (safe for SQLite /tmp); alter keeps data if present
+        await db.sync({ alter: true });
+        logger.info('Database sync (alter) completed for ephemeral environment');
         const seeded = await seedOnceIfEmpty();
         if (seeded) {
           logger.info('Auto-seed completed (ephemeral or SEED_ON_START)');
