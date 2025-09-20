@@ -11,6 +11,7 @@ require('dotenv').config();
 const db = require('./config/database');
 const logger = require('./utils/logger');
 const errorHandler = require('./middleware/errorHandler');
+const seedOnceIfEmpty = require('./utils/seedOnceIfEmpty');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -134,6 +135,22 @@ async function startServer() {
     // Test database connection
     await db.authenticate();
     logger.info('Database connection established successfully');
+
+    // Auto-seed in ephemeral environments (e.g., Render free tier using /tmp) or when explicitly enabled
+    const shouldSeed = String(process.env.SEED_ON_START || '').toLowerCase() === 'true'
+      || String(process.env.SQLITE_STORAGE || '').includes('/tmp');
+    if (shouldSeed) {
+      try {
+        const seeded = await seedOnceIfEmpty();
+        if (seeded) {
+          logger.info('Auto-seed completed (ephemeral or SEED_ON_START)');
+        } else {
+          logger.info('Auto-seed skipped: data already present');
+        }
+      } catch (se) {
+        logger.error('Auto-seed failed:', se);
+      }
+    }
 
     // Optional model sync on start (disabled by default to avoid SQLite lock/alter issues)
     if (String(process.env.DB_SYNC_ON_START).toLowerCase() === 'true') {
