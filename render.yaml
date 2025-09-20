@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: schooldekho-backend
+    env: node
+    plan: free
+    autoDeploy: true
+    buildCommand: "cd backend && npm ci"
+    startCommand: "cd backend && node src/server.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_DIALECT
+        value: sqlite
+      - key: SQLITE_STORAGE
+        value: /var/data/dev.sqlite
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "200"
+      - key: CORS_ORIGIN
+        value: https://YOUR_NETLIFY_SITE.netlify.app
+      - key: JWT_SECRET
+        generateValue: true
+    disks:
+      - name: data
+        mountPath: /var/data
+        sizeGB: 1
