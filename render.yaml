@@ -16,7 +16,7 @@ services:
       - key: DB_DIALECT
         value: sqlite
       - key: SQLITE_STORAGE
-        value: /var/data/dev.sqlite
+        value: /tmp/schooldekho.sqlite
       - key: LOG_LEVEL
         value: info
       - key: RATE_LIMIT_WINDOW_MS
@@ -27,7 +27,4 @@ services:
         value: https://YOUR_NETLIFY_SITE.netlify.app
       - key: JWT_SECRET
         generateValue: true
-    disk:
-      name: data
-      mountPath: /var/data
-      sizeGB: 1
+    # Note: Free tier does not support persistent disks. Using /tmp for SQLite means data resets on restart/redeploy.
