@@ -4,8 +4,8 @@ services:
     env: node
     plan: free
     autoDeploy: true
-    buildCommand: "cd backend && npm ci"
-    startCommand: "cd backend && node src/server.js"
+    buildCommand: "npm --prefix backend ci"
+    startCommand: "node backend/src/server.js"
     envVars:
       - key: NODE_ENV
         value: production
@@ -27,7 +27,7 @@ services:
         value: https://YOUR_NETLIFY_SITE.netlify.app
       - key: JWT_SECRET
         generateValue: true
-    disks:
-      - name: data
-        mountPath: /var/data
-        sizeGB: 1
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
