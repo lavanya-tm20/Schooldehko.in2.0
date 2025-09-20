@@ -28,12 +28,35 @@ const policiesRoutes = require('./routes/policies');
 const app = express();
 const server = createServer(app);
 
+// Normalize CORS origins from env: allow comma-separated list, strip stray quotes
+const rawCorsEnv = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const ALLOWED_ORIGINS = rawCorsEnv
+  .split(',')
+  .map(s => (s || '').trim())
+  .map(s => s.replace(/^"|"$/g, '').replace(/^'|'$/g, ''))
+  .filter(Boolean);
+
 // Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    methods: ["GET", "POST"],
+    credentials: true
   }
+});
+
+// Health check endpoint BEFORE CORS to avoid any header issues
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV
+  });
 });
 
 // Rate limiting
@@ -48,7 +71,21 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // allow tools like curl/postman
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  },
+  credentials: true
+}));
+
+// Preflight for all routes
+app.options('*', cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  },
   credentials: true
 }));
 app.use(limiter);
@@ -58,15 +95,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Static files
 app.use('/uploads', express.static('uploads'));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV
-  });
-});
+// (Note) /health is already registered above before CORS
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -166,7 +195,7 @@ async function startServer() {
     server.listen(PORT, HOST, () => {
       logger.info(`🚀 SchoolDekho.in Backend Server running on http://${HOST}:${PORT}`);
       logger.info(`📊 Environment: ${process.env.NODE_ENV}`);
-      logger.info(`🔗 CORS Origin: ${process.env.CORS_ORIGIN}`);
+      logger.info(`🔗 CORS Origin(s): ${ALLOWED_ORIGINS.join(', ')}`);
     });
 
   } catch (error) {

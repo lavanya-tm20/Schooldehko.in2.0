@@ -2,16 +2,11 @@ const { School, User, Alumni, Scholarship, Policy, Fundraising, Loan } = require
 const bcrypt = require('bcryptjs');
 
 /**
- * Seed a minimal dataset if the DB looks empty.
- * Returns true if it seeded, false if data already present.
+ * Ensure admin exists and seed demo data when required.
+ * Returns true if demo data was seeded; always ensures admin account.
  */
 module.exports = async function seedOnceIfEmpty() {
-  // If there's at least one user and one school, assume seeded
-  const userCount = await User.count();
-  const schoolCount = await School.count();
-  if (userCount > 0 && schoolCount > 0) return false;
-
-  // Create admin user
+  // Always ensure the admin user exists even if DB already has data
   const adminEmail = 'admin@schooldekho.in';
   const salt = await bcrypt.genSalt(10);
   const hashed = await bcrypt.hash('Admin@123', salt);
@@ -26,6 +21,10 @@ module.exports = async function seedOnceIfEmpty() {
       phone: '+911234567890'
     }
   });
+
+  // Only seed demo dataset if there are zero schools (idempotent light check)
+  const schoolCount = await School.count();
+  if (schoolCount > 0) return false;
 
   // Seed two example schools
   const schools = [
